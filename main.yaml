@@ -1,0 +1,84 @@
+---
+#
+# demo
+#
+- name:         "demonstrate openshift authentication"
+  hosts:        localhost
+  connection:   local
+  gather_facts: false
+  vars_files:
+    - vault.yaml
+
+  tasks:
+    #
+    # setup
+    #
+    - name: "determine the authentication type"
+      ansible.builtin.set_fact:
+        _openshift_user_auth:            "{{ (openshift_username | default('') != '') and (openshift_password | default('') != '') }}"
+        _openshift_service_account_auth: "{{ (openshift_service_account_token | default('') != '') }}"
+
+    - debug:
+        var: _openshift_user_auth
+
+    - debug:
+        var: _openshift_service_account_auth
+
+    - name: "fail if we cannot determine the authentication mechanism"
+      fail:
+        msg: "cannot determine authentication mechanism"
+      when:
+        - not _openshift_user_auth
+        - not _openshift_service_account_auth
+
+    #
+    # authenticate (defer to service account auth if we have provided a service account token)
+    #
+    - when: _openshift_user_auth and (not _openshift_service_account_auth)
+      block:
+        - name: "ensure we can fetch a token from the admin provider"
+          ansible.builtin.uri:
+            url:              "{{ openshift_oauth_endpoint_url }}/oauth/authorize?client_id=openshift-challenging-client&response_type=token"
+            url_username:     "{{ openshift_username }}"
+            url_password:     "{{ openshift_password }}"
+            force:            true
+            force_basic_auth: true
+            follow_redirects: false
+            return_content:   true
+            validate_certs:   false
+            headers:
+              X-CSRF-Token: "wait-until-ready"
+            status_code:
+              - 302
+          retries:  30
+          delay:    10
+          register: _openshift_oauth_response
+          until:    not _openshift_oauth_response.failed
+
+        # TODO: someone better with regex can fix this mess
+        - name: "set the access token from the response"
+          ansible.builtin.set_fact:
+            _openshift_access_token: "{{ (_openshift_oauth_response.location | regex_search(_regex_search)).split('access_token=') | last }}"
+          vars:
+            _regex_search: 'access_token=([^&]+)'
+
+    - when: _openshift_service_account_auth
+      name: "set the access token from the variables"
+      ansible.builtin.set_fact:
+        _openshift_access_token: "{{ openshift_service_account_token }}"
+
+    #
+    # do something
+    #
+    - name: "ensure we can authenticate against the cluster (get namespaces)"
+      kubernetes.core.k8s_info:
+        host:        "{{ openshift_api_url }}"
+        api_key:     "{{ _openshift_access_token }}"
+        api_version: "v1"
+        kind:        "Namespace"
+        verify_ssl:  false
+      register: _get_namespaces_response
+
+    - name: "print the response"
+      ansible.builtin.debug:
+        msg: "{{ _get_namespaces_response.resources | map(attribute='metadata.name') | list }}"

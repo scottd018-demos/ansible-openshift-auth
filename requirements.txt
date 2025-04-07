@@ -1,0 +1,5 @@
+urllib3==1.26.16
+ansible==8.3.0
+ansible-core==2.15.3
+packaging==21.3
+kubernetes>=24.2.0
