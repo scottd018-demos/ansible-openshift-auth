@@ -19,7 +19,7 @@ Re-type new password:
 Adding password for user demo-user
 
 # create the htpasswd secret
-oc create secret generic demo-user --from-file=demo.htpasswd -n openshift-config
+oc create secret generic demo-user --from-file=htpasswd=demo.htpasswd -n openshift-config
 
 # append the new htpasswd identity provider to the cluster OAuth resource .identityProviders section
 oc edit oauth cluster
@@ -40,7 +40,13 @@ identityProviders:
 4. The token is used to make followon API calls to the OpenShift API.
 
 5. Kubernetes RBAC restricts the token based on what access it has via `ClusterRole`, `ClusterRoleBinding`, `Role` 
-and `RoleBinding` resources.
+and `RoleBinding` resources.  You will need to assign appropriate RBAC to your user that allows it to do 
+what you need it to do.  The below assigns full admin privileges via the `cluster-admin` role, but you can use any role
+you would like (or create one) to restrict the ability of the service account:
+
+```bash
+oc adm policy add-cluster-role-to-user cluster-admin demo-user
+```
 
 
 ## Service Account Authentication
@@ -53,7 +59,9 @@ The flow for service account authentication looks as follows:
 oc -n default create sa demo-sa
 ```
 
-2. Assign the RBAC.  The below assigns full admin privileges via the `cluster-admin` role, but you can use any role
+2. Kubernetes RBAC restricts the token based on what access it has via `ClusterRole`, `ClusterRoleBinding`, `Role` 
+and `RoleBinding` resources.  You will need to assign appropriate RBAC to your service account that allows it to do 
+what you need it to do.  The below assigns full admin privileges via the `cluster-admin` role, but you can use any role
 you would like (or create one) to restrict the ability of the service account:
 
 ```bash
