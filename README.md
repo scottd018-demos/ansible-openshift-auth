@@ -84,7 +84,7 @@ The following describes the input variables to run this demo:
 | `openshift_password` | When using [basic auth](#basic-authentication), the password associated with the `openshift_username` of the user to use | Yes (`vault.yaml`) | No.  One of username and password or service account must be used. |
 | `openshift_service_account_token` | When using [service account auth](#service-account-authentication), the token of the service account | Yes (`vault.yaml`) | No.  One of username and password or service account must be used. |
 | `openshift_api_url` | The URL of the API server, prefaced with `https://` | Yes (`vault.yaml`) | Yes |
-| `openshift_oauth_endpoing_url` | The URL of the OAuth endpiong, prefaced with `https://` | Yes (`vault.yaml`) | Yes |
+| `openshift_oauth_endpoint_url` | The URL of the OAuth endpoint, prefaced with `https://` | Yes (`vault.yaml`) | Yes |
 
 
 ## Run the Demo
